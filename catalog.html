@@ -7846,14 +7846,29 @@ function ft(){
 }
 
 // --- MOBILE ---
-var selectedNote = '';
+var selectedCat = '';
 
-function countNote(noteName){
-  var c=0;
+// Note-to-category mapping: each broad category matches scentProfile values
+var NOTE_CATEGORIES = {
+  'Floral': ['Floral','White Floral','Floral Fruity','Rose','Iris','Feminine'],
+  'Fresh': ['Citrus','Fresh','Aromatic','Aquatic','Green','Icy','Minty','Soapy','Tea','Clean','Marine','Bright','Citrus-forward','Airy','Zesty','Salty','Summer','Tropical'],
+  'Woody': ['Woody','Earthy','Smoky','Leather','Leathery','Oud','Musk','Musky','Metallic','Dry'],
+  'Amber/Oriental': ['Amber','Oriental','Warm Spicy','Spicy','Incense','Incense-like','Resinous','Animalic','Tobacco','Boozy','Honey','Nutty','Cinnamon','Chypre','Dark','Warm','Bold'],
+  'Gourmand': ['Gourmand','Vanilla','Vanillic','Sweet','Creamy','Powdery','Fruity','Cherry','Smooth']
+};
+
+function categoryCount(cat){
+  var keywords = NOTE_CATEGORIES[cat] || [cat];
+  var c = 0;
   for(var k in DB.fragrances){
-    var f=DB.fragrances[k];
-    var all=(f.topNotes||[]).concat(f.heartNotes||[]).concat(f.baseNotes||[]);
-    if(all.indexOf(noteName)>=0) c++;
+    var f = DB.fragrances[k];
+    var sp = (f.scentProfile||[]).map(function(p){return p.toLowerCase().trim()});
+    for(var i=0;i<sp.length;i++){
+      for(var j=0;j<keywords.length;j++){
+        if(sp[i] === keywords[j].toLowerCase().trim()){ c++; break; }
+      }
+      if(c > 0 && c <= 99999) break;
+    }
   }
   return c;
 }
@@ -7864,10 +7879,15 @@ function getFiltered(){
   if(mobileMode == 'brand' && ab.size > 0){
     a = a.filter(function(f){return f.brand && ab.has(f.brand)});
   }
-  if(mobileMode == 'note' && selectedNote){
+  if(mobileMode == 'note' && selectedCat){
+    var keywords = NOTE_CATEGORIES[selectedCat] || [selectedCat];
+    var kLower = keywords.map(function(kw){return kw.toLowerCase().trim()});
     a = a.filter(function(f){
-      var all=(f.topNotes||[]).concat(f.heartNotes||[]).concat(f.baseNotes||[]);
-      return all.indexOf(selectedNote)>=0;
+      var sp = (f.scentProfile||[]).map(function(p){return p.toLowerCase().trim()});
+      for(var i=0;i<sp.length;i++){
+        if(kLower.indexOf(sp[i]) >= 0) return true;
+      }
+      return false;
     });
   }
   if(q) a = a.filter(function(f){
@@ -7950,17 +7970,71 @@ function generateLayerCombo(){
       var recipe = LAYER_REASONS[ri];
       if(recipe[0] === aFam && recipe[1] === bFam){
         var aHeavy = isHeavy(a), bHeavy = isHeavy(b);
-        if(aHeavy && !bHeavy) return { base: a, top: b, reason: recipe[2] };
-        if(bHeavy && !aHeavy) return { base: b, top: a, reason: recipe[2] };
-        if(Math.random()<0.5) return { base: a, top: b, reason: recipe[2] };
-        else return { base: b, top: a, reason: recipe[2] };
+        if(aHeavy && !bHeavy) return { base: a, top: b, baseId: aId, topId: bId, reason: recipe[2] };
+        if(bHeavy && !aHeavy) return { base: b, top: a, baseId: bId, topId: aId, reason: recipe[2] };
+        if(Math.random()<0.5) return { base: a, top: b, baseId: aId, topId: bId, reason: recipe[2] };
+        else return { base: b, top: a, baseId: bId, topId: aId, reason: recipe[2] };
       }
     }
   }
   var aId = ids[Math.floor(Math.random()*ids.length)];
   var bId = ids[Math.floor(Math.random()*ids.length)];
-  return { base: DB.fragrances[aId], top: DB.fragrances[bId],
+  return { base: DB.fragrances[aId], top: DB.fragrances[bId], baseId: aId, topId: bId,
     reason: 'An unexpected pairing that just works. Spray the heavier one first, then layer lightly.' };
+}
+
+function generateLayerComboFor(fixedId){
+  var ids = Object.keys(DB.fragrances);
+  var fixed = DB.fragrances[fixedId];
+  if(!fixed) return generateLayerCombo();
+  var fixedFam = getFragProfileFamily(fixed);
+  for(var attempt=0; attempt<80; attempt++){
+    var partnerId = ids[Math.floor(Math.random()*ids.length)];
+    if(partnerId === fixedId) continue;
+    var partner = DB.fragrances[partnerId];
+    var partnerFam = getFragProfileFamily(partner);
+    for(var ri=0; ri<LAYER_REASONS.length; ri++){
+      var recipe = LAYER_REASONS[ri];
+      if((recipe[0] === fixedFam && recipe[1] === partnerFam) || (recipe[0] === partnerFam && recipe[1] === fixedFam)){
+        var fixedHeavy = isHeavy(fixed), partnerHeavy = isHeavy(partner);
+        if(recipe[0] === fixedFam && recipe[1] === partnerFam){
+          // Fixed is first in recipe, it's the base
+          if(fixedHeavy || !partnerHeavy) return { base: fixed, top: partner, baseId: fixedId, topId: partnerId, reason: recipe[2], locked: fixedId };
+        } else {
+          // Partner is first in recipe, partner is base
+          if(partnerHeavy || !fixedHeavy) return { base: partner, top: fixed, baseId: partnerId, topId: fixedId, reason: recipe[2], locked: fixedId };
+        }
+        return { base: partner, top: fixed, baseId: partnerId, topId: fixedId, reason: recipe[2], locked: fixedId };
+      }
+    }
+  }
+  // Fallback
+  var partnerId = ids[Math.floor(Math.random()*ids.length)];
+  if(partnerId === fixedId) partnerId = ids[(ids.indexOf(fixedId)+1) % ids.length];
+  var partner = DB.fragrances[partnerId];
+  var fixedHeavy = isHeavy(fixed);
+  if(fixedHeavy) return { base: fixed, top: partner, baseId: fixedId, topId: partnerId, reason: 'These two find a way to work together. Try the heavier one as a base.', locked: fixedId };
+  return { base: partner, top: fixed, baseId: partnerId, topId: fixedId, reason: 'Unexpected but interesting. The lighter one sits on top of the heavier base.', locked: fixedId };
+}
+
+function showLayerFit(fragId){
+  mobileMode = 'layer';
+  document.querySelectorAll('.mode-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.mode === 'layer');
+  });
+  document.getElementById('layerCombo').style.display = 'block';
+  var combo = generateLayerComboFor(fragId);
+  var div = document.getElementById('layerCombo');
+  var f = DB.fragrances[fragId];
+  div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:12px;margin-bottom:10px">' +
+    '<div style="font-size:.85rem;font-weight:700;color:#6366f1;margin-bottom:6px">🎯 Layering Fit for ' + f.name + '</div>' +
+    '<div style="margin-bottom:6px"><span style="color:#888;font-size:.7rem">BASE LAYER</span><br><span style="color:#fff;font-weight:600">' + combo.base.name + '</span> <span style="color:#818cf8;font-size:.78rem">' + combo.base.brand + '</span></div>' +
+    '<div style="margin-bottom:8px"><span style="color:#888;font-size:.7rem">TOP LAYER</span><br><span style="color:#fff;font-weight:600">' + combo.top.name + '</span> <span style="color:#818cf8;font-size:.78rem">' + combo.top.brand + '</span></div>' +
+    '<div style="background:#1e1b4b;color:#c7d2fe;padding:8px 10px;border-radius:8px;font-size:.8rem;margin-bottom:6px">💡 ' + combo.reason + '</div>' +
+    '<div style="margin-top:6px;display:flex;gap:6px">' +
+      '<button onclick="showLayerFit(\'' + fragId + '\')" style="flex:1;padding:8px;background:#6366f1;border:none;color:#fff;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">🔀 Another Match</button>' +
+      '<button onclick="switchMode(\'brand\')" style="flex:1;padding:8px;background:#333;border:none;color:#aaa;border-radius:8px;font-size:.8rem;cursor:pointer">↩ Back</button>' +
+    '</div></div>';
 }
 
 function renderLayer(){
@@ -7980,7 +8054,7 @@ function renderLayer(){
 }
 
 function renderMobile(){
-  selectedNote = '';
+  selectedCat = '';
   document.getElementById('layerCombo').style.display = 'none';
   var a = getFiltered();
   document.getElementById('cntM').textContent = a.length;
@@ -8002,16 +8076,13 @@ function renderMobile(){
     grid += '</div>';
     picksDiv.innerHTML = grid;
   } else if(mobileMode == 'note'){
-    // Show note pills, computed from ALL_NOTES
+    // Show 5 broad note categories
+    var cats = ['Floral','Fresh','Woody','Amber/Oriental','Gourmand'];
     var grid = '<div class="note-grid">';
-    var shown = 0;
-    ALL_NOTES.forEach(function(n){
-      var cnt = countNote(n);
-      if(cnt === 0) return;
-      shown++;
-      if(shown > 300) return;
-      var active = (selectedNote === n) ? ' active' : '';
-      grid += '<div class="note-pill'+active+'" onclick="selectNote(\''+n.replace(/'/g,"\\'")+'\')">'+n+' <span class="ncount">'+cnt+'</span></div>';
+    cats.forEach(function(c){
+      var cnt = categoryCount(c);
+      var active = (selectedCat === c) ? ' active' : '';
+      grid += '<div class="note-pill'+active+'" onclick="selectCat(\''+c+'\')">'+c+' <span class="ncount">'+cnt+'</span></div>';
     });
     grid += '</div>';
     picksDiv.innerHTML = grid;
@@ -8023,7 +8094,9 @@ function renderMobile(){
   }
   
   var r = '';
-  a.forEach(function(g){
+  for(var fid in DB.fragrances){
+    var g = DB.fragrances[fid];
+    if(a.indexOf(g) === -1) continue;
     var tn = (g.topNotes||[]).join(' · ');
     var hn = (g.heartNotes||[]).join(' · ');
     var bn = (g.baseNotes||[]).join(' · ');
@@ -8034,8 +8107,10 @@ function renderMobile(){
       '<div class="mcard-note-line"><span class="nl">Top</span> '+tn+'</div>'+
       '<div class="mcard-note-line"><span class="nl">Heart</span> '+hn+'</div>'+
       '<div class="mcard-note-line"><span class="nl">Base</span> '+bn+'</div>'+
-      '</div></div>';
-  });
+      '</div>'+
+      '<button onclick="showLayerFit(\''+fid+'\')" style="margin-top:6px;padding:6px;width:100%;background:#1e1b4b;border:1px solid #3730a3;color:#a5b4fc;border-radius:8px;font-size:.75rem;cursor:pointer">🔀 Find Layering Match</button>'+
+      '</div>';
+  };
   resultsDiv.innerHTML = r;
 }
 
@@ -8044,15 +8119,15 @@ function toggleBrand(b){
   renderMobile();
 }
 
-function selectNote(n){
-  selectedNote = (selectedNote === n) ? '' : n;
+function selectCat(c){
+  selectedCat = (selectedCat === c) ? '' : c;
   renderMobile();
 }
 
 function switchMode(mode){
   mobileMode = mode;
   ab.clear();
-  selectedNote = '';
+  selectedCat = '';
   document.querySelectorAll('.mode-btn').forEach(function(b){
     b.classList.toggle('active', b.dataset.mode == mode);
   });
