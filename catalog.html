@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Umar's Fragrance Collection</title>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Umar's Fragrance Decider</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#e0e0e0;padding:16px}
@@ -91,15 +91,17 @@ tr:hover td{background:#1a1a1a}
   <p class="sub"><span id="cntM">0</span> fragrances</p>
   <input class="search-bar" id="searchM" placeholder="Search name, brand, notes...">
   <div class="mode-switch" id="modeSwitch">
-    <div class="mode-btn active" data-mode="brand">🏷️ By Brand</div>
-    <div class="mode-btn" data-mode="note">🎨 By Notes</div>
+    <div class="mode-btn active" data-mode="brand">🏷️ Brand</div>
+    <div class="mode-btn" data-mode="note">🎨 Notes</div>
+    <div class="mode-btn" data-mode="layer">🎲 Layer</div>
   </div>
   <div id="mobilePicks"></div>
+  <div id="layerCombo" style="display:none"></div>
   <div id="mobileResults"></div>
 </div>
 
 <div class="desktop-only">
-  <h1>🧴 Umar's Fragrance Collection</h1>
+  <h1>🧴 Umar's Fragrance Decider</h1>
   <p class="sub"><span id="cnt">0</span> fragrances</p>
   <div class="stats" id="stats"></div>
   <input class="search-bar" id="search" placeholder="Search fragrances, brands, notes...">
@@ -7796,8 +7798,18 @@ var DB = {
   }
 };
 
-var NOTE_CATS = {"🍊 Citrus": ["Bergamot", "Lemon", "Mandarin", "Orange", "Grapefruit", "Lime", "Neroli", "Petitgrain", "Yuzu", "Citrus"], "🌊 Aquatic": ["Aquatic", "Marine", "Sea Salt", "Salt", "Ozone", "Calone", "Watery", "Ocean"], "🌿 Fresh": ["Fresh", "Green", "Violet Leaf", "Mint", "Basil", "Rosemary", "Tea", "Verbena", "Grass", "Pink Pepper", "Aldehydes"], "🌸 Floral": ["Rose", "Jasmine", "Lavender", "Iris", "Peony", "Magnolia", "Lily", "Violet", "Geranium", "Lily of the Valley", "Orange Blossom", "Osmanthus", "Freesia", "Narcissus"], "🍎 Fruity": ["Apple", "Pear", "Peach", "Raspberry", "Strawberry", "Cherry", "Pineapple", "Mango", "Lychee", "Passionfruit", "Currant", "Plum", "Fig", "Litchi", "Rhubarb", "Coconut", "Red Fruits"], "🍦 Sweet": ["Vanilla", "Caramel", "Toffee", "Tonka", "Honey", "Sugar", "Praline", "Candy", "Marshmallow", "Chocolate", "Coffee"], "🌶️ Spicy": ["Cinnamon", "Cardamom", "Ginger", "Nutmeg", "Clove", "Pepper", "Saffron", "Cumin", "Anise", "Spices"], "🪵 Woody": ["Sandalwood", "Cedar", "Vetiver", "Oak", "Teak", "Woody", "Akigalawood", "Georgywood", "Cashmeran", "Sawdust"], "🌳 Earthy": ["Patchouli", "Moss", "Oakmoss", "Mushroom", "Leather", "Tobacco", "Hay", "Earthy"], "🔥 Warm": ["Amber", "Incense", "Oud", "Myrrh", "Frankincense", "Labdanum", "Benzoin", "Resin", "Elemi", "Cypriol", "Amberwood"], "🥃 Boozy": ["Rum", "Whiskey", "Brandy", "Cognac", "Gin", "Boozy", "Wine", "Apple Brandy"], "🧴 Musk": ["Musk", "Ambroxan", "Ambergris", "Ambrette", "White Musk"]};
-var FRAG_CATS = {"persephone": ["🍊 Citrus", "🍎 Fruity", "🔥 Warm", "🧴 Musk"], "concordia": ["🌶️ Spicy", "🍊 Citrus", "🥃 Boozy"], "amber-empire": ["🍦 Sweet", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "leau-dissey-pour-homme-intense": ["🌶️ Spicy", "🍊 Citrus", "🔥 Warm", "🧴 Musk"], "vanguard": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🥃 Boozy", "🪵 Woody"], "blu-oud": ["🌳 Earthy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🔥 Warm", "🧴 Musk"], "royal-blend": ["🌶️ Spicy", "🌸 Floral", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🥃 Boozy", "🪵 Woody"], "supremacy-collectors-edition": ["🌳 Earthy", "🌸 Floral", "🍊 Citrus", "🍎 Fruity", "🔥 Warm", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "vulcan-feu": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "hawas-malibu": ["🌳 Earthy", "🌸 Floral", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "obsidian": ["🌳 Earthy", "🌸 Floral", "🌿 Fresh", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "aquatica": ["🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🥃 Boozy", "🧴 Musk"], "terra": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍦 Sweet", "🔥 Warm", "🧴 Musk"], "italia": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🍊 Citrus", "🍦 Sweet", "🪵 Woody"], "tiger": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🔥 Warm", "🧴 Musk"], "elixir-rayhaan": ["🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍦 Sweet", "🔥 Warm"], "royal-taboo": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🍦 Sweet", "🔥 Warm", "🧴 Musk"], "x-xandal": ["🌳 Earthy", "🌸 Floral", "🍦 Sweet", "🔥 Warm", "🥃 Boozy"], "freeze": ["🌶️ Spicy", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🔥 Warm", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "le-male-elixir": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm"], "spectre-ghost": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🥃 Boozy", "🪵 Woody"], "janan-platinum": ["🌸 Floral", "🌿 Fresh", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "marwa": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "mazaaj-infused": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "liquid-brun": ["🌶️ Spicy", "🌸 Floral", "🍊 Citrus", "🍦 Sweet", "🔥 Warm", "🧴 Musk"], "swy-intensely": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍦 Sweet", "🔥 Warm", "🧴 Musk"], "swy-powerfully": ["🌶️ Spicy", "🌸 Floral", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm"], "hectic": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "chapter-4": ["🌊 Aquatic", "🌳 Earthy", "🌸 Floral", "🍎 Fruity", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "reflection": ["🌊 Aquatic", "🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🍊 Citrus", "🥃 Boozy", "🧴 Musk"], "dreamscape": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🥃 Boozy", "🪵 Woody"], "opulence-leather": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🔥 Warm", "🧴 Musk"], "frostbite": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "pure-skin": ["🌳 Earthy", "🌸 Floral", "🍊 Citrus", "🍎 Fruity", "🥃 Boozy", "🧴 Musk"], "harmonia": ["🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🪵 Woody"], "selene": ["🌸 Floral", "🍎 Fruity", "🧴 Musk"], "nyx": ["🌶️ Spicy", "🍊 Citrus", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "rare-reef": ["🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🔥 Warm", "🧴 Musk"], "pacific-aura": ["🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🔥 Warm", "🧴 Musk"], "al-qiam-gold": ["🌳 Earthy", "🌶️ Spicy", "🍎 Fruity", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "tobacco-vanille": ["🌳 Earthy", "🍦 Sweet", "🪵 Woody"], "apple-brandy-on-the-rocks": ["🌳 Earthy", "🌶️ Spicy", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "interlude-man": ["🌳 Earthy", "🌶️ Spicy", "🌿 Fresh", "🍊 Citrus", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "champion": ["🌊 Aquatic", "🌳 Earthy", "🌶️ Spicy", "🌿 Fresh", "🍊 Citrus", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "oud-mood": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍦 Sweet", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "zenith-deep": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🔥 Warm", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "asad": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🧴 Musk"], "asad-elixir": ["🌳 Earthy", "🌶️ Spicy", "🌿 Fresh", "🍊 Citrus", "🍦 Sweet", "🔥 Warm", "🪵 Woody"], "y-le-parfum-2025": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🍊 Citrus", "🔥 Warm", "🥃 Boozy", "🧴 Musk"], "oud-maracuja": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "khamrah-qahwa": ["🌶️ Spicy", "🍦 Sweet", "🔥 Warm", "🥃 Boozy", "🧴 Musk"], "jean-lowe-immortal": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "oud-wood": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🍊 Citrus", "🍦 Sweet", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "iii-thriller": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍦 Sweet", "🔥 Warm", "🧴 Musk"], "spicebomb": ["🌳 Earthy", "🌶️ Spicy", "🌿 Fresh", "🍊 Citrus", "🔥 Warm", "🪵 Woody"], "ameer-al-oudh-intense-oud": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍦 Sweet", "🔥 Warm", "🧴 Musk"], "ck-free": ["🌳 Earthy", "🌶️ Spicy", "🍊 Citrus", "🪵 Woody"], "california-blue": ["🌊 Aquatic", "🌳 Earthy", "🌸 Floral", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🪵 Woody"], "california-signature": ["🌊 Aquatic", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🪵 Woody"], "mayfair": ["🌳 Earthy", "🌸 Floral", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🪵 Woody"], "bonfire-vanilla": ["🌶️ Spicy", "🌿 Fresh", "🍊 Citrus", "🍦 Sweet"], "glitch": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "shiyaaka-shadow": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "hawas-black": ["🌳 Earthy", "🌸 Floral", "🍊 Citrus", "🍎 Fruity", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "hawas-chrome": ["🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "zeleny": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🧴 Musk", "🪵 Woody"], "corium": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🍦 Sweet", "🔥 Warm"], "lion-rayhaan": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "wolf-rayhaan": ["🌶️ Spicy", "🍦 Sweet", "🔥 Warm"], "oud-nacre": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍦 Sweet", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "orange-mediterranee": ["🌸 Floral", "🍊 Citrus", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "myslf-labsolu": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "aether": ["🌳 Earthy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "maahir-legacy": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🔥 Warm", "🪵 Woody"], "obsidian-fa": ["🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍦 Sweet", "🔥 Warm", "🧴 Musk"], "aurum": ["🌸 Floral", "🍎 Fruity", "🍦 Sweet", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "uranus-velixir": ["🌶️ Spicy", "🌿 Fresh", "🍊 Citrus", "🪵 Woody"], "poseidon-velixir": ["🌶️ Spicy", "🍊 Citrus", "🔥 Warm", "🥃 Boozy", "🧴 Musk"], "conquer": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🍊 Citrus", "🍦 Sweet", "🔥 Warm", "🥃 Boozy", "🧴 Musk"], "sorrento": ["🌊 Aquatic", "🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🍊 Citrus", "🔥 Warm", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "naughty-dates": ["🌶️ Spicy", "🍊 Citrus", "🍦 Sweet", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "golden-vanille": ["🌶️ Spicy", "🌿 Fresh", "🍎 Fruity", "🍦 Sweet", "🧴 Musk", "🪵 Woody"], "lost-in-magnolia": ["🌳 Earthy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🧴 Musk", "🪵 Woody"], "aqua-zyphra": ["🌊 Aquatic", "🌳 Earthy", "🌸 Floral", "🍊 Citrus", "🔥 Warm", "🧴 Musk", "🪵 Woody"], "eros": ["🌳 Earthy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🍦 Sweet", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "icarus-velixir": ["🌶️ Spicy", "🌸 Floral", "🍊 Citrus", "🍎 Fruity", "🥃 Boozy", "🧴 Musk", "🪵 Woody"], "aphrodite-velixir": ["🌳 Earthy", "🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🍎 Fruity", "🥃 Boozy"], "roses-on-ice": ["🌶️ Spicy", "🌸 Floral", "🌿 Fresh", "🍊 Citrus", "🧴 Musk", "🪵 Woody"]};
+// Dynamically compute all unique notes from DB
+var ALL_NOTES = [];
+(function(){
+  var seen = {};
+  for(var k in DB.fragrances){
+    var f = DB.fragrances[k];
+    (f.topNotes||[]).concat(f.heartNotes||[]).concat(f.baseNotes||[]).forEach(function(n){
+      if(n && !seen[n]){ seen[n]=true; ALL_NOTES.push(n); }
+    });
+  }
+  ALL_NOTES.sort();
+})();
 
 var af = new Set();
 var ab = new Set();
@@ -7834,20 +7846,29 @@ function ft(){
 }
 
 // --- MOBILE ---
+var selectedNote = '';
+
+function countNote(noteName){
+  var c=0;
+  for(var k in DB.fragrances){
+    var f=DB.fragrances[k];
+    var all=(f.topNotes||[]).concat(f.heartNotes||[]).concat(f.baseNotes||[]);
+    if(all.indexOf(noteName)>=0) c++;
+  }
+  return c;
+}
+
 function getFiltered(){
   var q = document.getElementById('searchM').value.toLowerCase().trim();
   var a = allf();
-  if(mobileMode == 'brand'){
-    if(ab.size > 0) a = a.filter(function(f){return f.brand && ab.has(f.brand)});
-  } else {
-    if(ab.size > 0){
-      a = a.filter(function(f){
-        var fc = FRAG_CATS[f.id] || [];
-        var match = false;
-        ab.forEach(function(cat){if(fc.indexOf(cat)>=0)match=true});
-        return match;
-      });
-    }
+  if(mobileMode == 'brand' && ab.size > 0){
+    a = a.filter(function(f){return f.brand && ab.has(f.brand)});
+  }
+  if(mobileMode == 'note' && selectedNote){
+    a = a.filter(function(f){
+      var all=(f.topNotes||[]).concat(f.heartNotes||[]).concat(f.baseNotes||[]);
+      return all.indexOf(selectedNote)>=0;
+    });
   }
   if(q) a = a.filter(function(f){
     return (f.name+' '+f.brand+' '+(f.topNotes||[]).join(' ')+' '+(f.heartNotes||[]).join(' ')+' '+(f.baseNotes||[]).join(' ')+' '+(f.season||[]).join(' ')).toLowerCase().indexOf(q)>=0
@@ -7855,7 +7876,112 @@ function getFiltered(){
   return a;
 }
 
+function noteContains(f, noteName){
+  var all=(f.topNotes||[]).concat(f.heartNotes||[]).concat(f.baseNotes||[]);
+  return all.indexOf(noteName)>=0;
+}
+
+function noteWhere(f, noteName){
+  var parts=[];
+  if((f.topNotes||[]).indexOf(noteName)>=0) parts.push('Top');
+  if((f.heartNotes||[]).indexOf(noteName)>=0) parts.push('Heart');
+  if((f.baseNotes||[]).indexOf(noteName)>=0) parts.push('Base');
+  return parts.join('/');
+}
+
+// --- LAYERING ENGINE ---
+var LAYER_REASONS = [
+  ['fresh','warm','The fresh notes lift the warm base, making it brighter without losing depth.'],
+  ['fresh','warm','Crisp freshness cutting through the warmth — balanced and versatile.'],
+  ['fresh','sweet','Clean freshness meets sweetness — a crowd-pleasing combo.'],
+  ['fresh','sweet','The sweetness sticks while the freshness keeps it airy and light.'],
+  ['fresh','dark','Dark and broody lifted by a blast of freshness — unexpected but killer.'],
+  ['fresh','dark','The fresh top cuts through the heavy base like a ray of light.'],
+  ['warm','sweet','Double warmth. Sweet and warm wrap around each other perfectly. Date night material.'],
+  ['warm','sweet','A cozy hug in a bottle. The sweetness amplifies the warmth beautifully.'],
+  ['warm','dark','The darkness provides the edge, the warmth makes it approachable. Power combo.'],
+  ['warm','dark','Bold and brooding with a warm heart. Gets attention without being offensive.'],
+  ['warm','dark','Like a leather jacket with a cashmere lining. Tough outside, cozy within.'],
+  ['sweet','dark','Sweetness tames the beast. The dark notes add complexity while the sweetness rounds it out.'],
+  ['sweet','dark','The sugar and the smoke dance together — sophisticated but playful.'],
+  ['floral','fresh','Florals lifted by fresh air — light, elegant, effortlessly appealing.'],
+  ['floral','sweet','A sweet bouquet. The florals bring elegance, the sweetness brings the fun.'],
+  ['floral','dark','The florals soften the dark edges. A beautiful beast.'],
+  ['spicy','sweet','Spice and sweet are soulmates. The heat makes the sweetness more interesting.'],
+  ['spicy','sweet','Like chai with extra honey. Comforting with a kick.'],
+  ['spicy','fresh','Fresh with a bite. The spice adds an edge to otherwise clean freshness.'],
+  ['spicy','dark','Dark, spicy, and dangerous. Maximum intensity for maximum confidence.'],
+  ['spicy','dark','A powerhouse combo. The spice ignites the dark base.'],
+  ['fresh','fresh','Two freshies layered — double the clean, double the energy. Perfect for scorching days.'],
+  ['sweet','sweet','Double gourmand goodness. For when one sweet scent just isnt enough.'],
+];
+
+function getFragProfileFamily(f) {
+  var profiles = (f.scentProfile || []).map(function(p){ return p.toLowerCase().trim(); });
+  var F = { fresh: ['citrus','fresh','aquatic','aromatic','green','icy','minty','soapy','tea','bright','citrus-forward','clean','marine'],
+           warm: ['warm','amber','boozy','warm spicy','honey','nutty','tobacco','cinnamon'],
+           sweet: ['sweet','vanilla','gourmand','creamy','powdery','fruity'],
+           dark: ['woody','leather','leathery','smoky','oriental','resinous','incense','earthy','animalic','oud'],
+           floral: ['floral','floral fruity','white floral'],
+           spicy: ['spicy','chypre'] };
+  for(var fam in F){
+    for(var i=0;i<profiles.length;i++){
+      if(F[fam].indexOf(profiles[i]) >= 0) return fam;
+    }
+  }
+  return 'fresh';
+}
+
+function isHeavy(f) {
+  var lon = (f.longevity||'').toLowerCase();
+  var sil = (f.sillage||'').toLowerCase();
+  return lon.indexOf('excellent')>=0 || lon.indexOf('beast')>=0 || sil.indexOf('beast')>=0 || sil.indexOf('heavy')>=0 || sil.indexOf('strong')>=0;
+}
+
+function generateLayerCombo(){
+  var ids = Object.keys(DB.fragrances);
+  for(var attempt=0; attempt<80; attempt++){
+    var aId = ids[Math.floor(Math.random()*ids.length)];
+    var bId = ids[Math.floor(Math.random()*ids.length)];
+    if(aId === bId) continue;
+    var a = DB.fragrances[aId], b = DB.fragrances[bId];
+    var aFam = getFragProfileFamily(a), bFam = getFragProfileFamily(b);
+    for(var ri=0; ri<LAYER_REASONS.length; ri++){
+      var recipe = LAYER_REASONS[ri];
+      if(recipe[0] === aFam && recipe[1] === bFam){
+        var aHeavy = isHeavy(a), bHeavy = isHeavy(b);
+        if(aHeavy && !bHeavy) return { base: a, top: b, reason: recipe[2] };
+        if(bHeavy && !aHeavy) return { base: b, top: a, reason: recipe[2] };
+        if(Math.random()<0.5) return { base: a, top: b, reason: recipe[2] };
+        else return { base: b, top: a, reason: recipe[2] };
+      }
+    }
+  }
+  var aId = ids[Math.floor(Math.random()*ids.length)];
+  var bId = ids[Math.floor(Math.random()*ids.length)];
+  return { base: DB.fragrances[aId], top: DB.fragrances[bId],
+    reason: 'An unexpected pairing that just works. Spray the heavier one first, then layer lightly.' };
+}
+
+function renderLayer(){
+  document.getElementById('cntM').textContent = '🎲';
+  document.getElementById('mobilePicks').innerHTML = '';
+  var combo = generateLayerCombo();
+  var div = document.getElementById('layerCombo');
+  div.style.display = 'block';
+  div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:12px;margin-bottom:10px">' +
+    '<div style="font-size:.85rem;font-weight:700;color:#6366f1;margin-bottom:6px">🎲 Shuffle Layering Combo</div>' +
+    '<div style="margin-bottom:6px"><span style="color:#888;font-size:.7rem">BASE LAYER</span><br><span style="color:#fff;font-weight:600">' + combo.base.name + '</span> <span style="color:#818cf8;font-size:.78rem">' + combo.base.brand + '</span></div>' +
+    '<div style="margin-bottom:8px"><span style="color:#888;font-size:.7rem">TOP LAYER</span><br><span style="color:#fff;font-weight:600">' + combo.top.name + '</span> <span style="color:#818cf8;font-size:.78rem">' + combo.top.brand + '</span></div>' +
+    '<div style="background:#1e1b4b;color:#c7d2fe;padding:8px 10px;border-radius:8px;font-size:.8rem;margin-bottom:6px">💡 ' + combo.reason + '</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">' +
+      '<button onclick="renderLayer()" style="flex:1;padding:8px;background:#6366f1;border:none;color:#fff;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">🔀 Shuffle Again</button>' +
+    '</div></div>';
+}
+
 function renderMobile(){
+  selectedNote = '';
+  document.getElementById('layerCombo').style.display = 'none';
   var a = getFiltered();
   document.getElementById('cntM').textContent = a.length;
   var picksDiv = document.getElementById('mobilePicks');
@@ -7875,20 +8001,18 @@ function renderMobile(){
     });
     grid += '</div>';
     picksDiv.innerHTML = grid;
-  } else {
+  } else if(mobileMode == 'note'){
+    // Show note pills, computed from ALL_NOTES
     var grid = '<div class="note-grid">';
-    for(var cat in NOTE_CATS){
-      var cnt = 0;
-      allf().forEach(function(f){if(FRAG_CATS[f.id] && FRAG_CATS[f.id].indexOf(cat)>=0) cnt++});
-      if(cnt == 0){
-        allf().forEach(function(f){
-          var alln = (f.topNotes||[]).concat(f.heartNotes||[]).concat(f.baseNotes||[]);
-          if(NOTE_CATS[cat].some(function(cn){return alln.some(function(nn){return nn.toLowerCase().indexOf(cn.toLowerCase())>=0})})) cnt++;
-        });
-      }
-      var active = ab.has(cat) ? ' active' : '';
-      grid += '<div class="note-pill'+active+'" onclick="toggleNoteCat(\''+cat.replace(/'/g,"\\'")+'\')">'+cat+' <span class="ncount">'+cnt+'</span></div>';
-    }
+    var shown = 0;
+    ALL_NOTES.forEach(function(n){
+      var cnt = countNote(n);
+      if(cnt === 0) return;
+      shown++;
+      if(shown > 300) return;
+      var active = (selectedNote === n) ? ' active' : '';
+      grid += '<div class="note-pill'+active+'" onclick="selectNote(\''+n.replace(/'/g,"\\'")+'\')">'+n+' <span class="ncount">'+cnt+'</span></div>';
+    });
     grid += '</div>';
     picksDiv.innerHTML = grid;
   }
@@ -7900,9 +8024,9 @@ function renderMobile(){
   
   var r = '';
   a.forEach(function(g){
-    var tn = (g.topNotes||[]).join(' \u00b7 ');
-    var hn = (g.heartNotes||[]).join(' \u00b7 ');
-    var bn = (g.baseNotes||[]).join(' \u00b7 ');
+    var tn = (g.topNotes||[]).join(' · ');
+    var hn = (g.heartNotes||[]).join(' · ');
+    var bn = (g.baseNotes||[]).join(' · ');
     r += '<div class="mcard">'+
       '<div class="mcard-top"><span class="mcard-name">'+(g.name||'')+'</span><span class="mcard-brand">'+(g.brand||'')+'</span></div>'+
       '<div class="mcard-meta"><span class="tbadge '+tc(g.type)+'">'+(g.type||'')+'</span> <span style="font-size:.7rem;color:#888">'+(g.longevity||'')+' '+(g.sillage||'')+'</span></div>'+
@@ -7920,60 +8044,36 @@ function toggleBrand(b){
   renderMobile();
 }
 
-function toggleNoteCat(cat){
-  if(ab.has(cat)) ab.delete(cat); else ab.add(cat);
+function selectNote(n){
+  selectedNote = (selectedNote === n) ? '' : n;
   renderMobile();
 }
 
 function switchMode(mode){
   mobileMode = mode;
   ab.clear();
+  selectedNote = '';
   document.querySelectorAll('.mode-btn').forEach(function(b){
     b.classList.toggle('active', b.dataset.mode == mode);
   });
-  renderMobile();
+  if(mode === 'layer'){
+    document.getElementById('layerCombo').style.display = 'block';
+    renderLayer();
+  } else {
+    renderMobile();
+  }
 }
 
 function initMobile(){
   document.querySelectorAll('.mode-btn').forEach(function(b){
     b.addEventListener('click', function(){switchMode(this.dataset.mode);});
   });
-  document.getElementById('searchM').addEventListener('input', renderMobile);
+  document.getElementById('searchM').addEventListener('input', function(){
+    if(mobileMode === 'layer') switchMode('brand');
+    renderMobile();
+  });
   renderMobile();
 }
-
-// --- DESKTOP INIT ---
-function initDesktop(){
-  var a=allf();document.getElementById('cnt').textContent=a.length;
-  var bs=new Set(),ps=new Set();
-  a.forEach(function(f){if(f.brand)bs.add(f.brand);(f.scentProfile||[]).forEach(function(p){ps.add(p)})});
-  document.getElementById('stats').innerHTML='<div class="stat"><div class="stat-v">'+a.length+'</div>Frags</div><div class="stat"><div class="stat-v">'+bs.size+'</div>Brands</div><div class="stat"><div class="stat-v">'+ps.size+'</div>Profiles</div>';
-  var fe=document.getElementById('filters');
-  var brandLabel=document.createElement('div');brandLabel.textContent='Brand: ';brandLabel.style.cssText='color:#888;font-size:.7rem;padding:4px 0;width:100%;margin-top:8px';
-  fe.appendChild(brandLabel);
-  var bsArr=Array.from(bs).sort(function(a,b){return bCount(b)-bCount(a)});
-  function bCount(b){return a.filter(function(f){return f.brand===b}).length};
-  bsArr.forEach(function(bName){
-    var b=document.createElement('button');var bcnt=a.filter(function(f){return f.brand===bName}).length;
-    b.className='filter-btn';b.textContent=bName+' ('+bcnt+')';b.dataset.brand=bName;
-    b.addEventListener('click',function(){if(ab.has(bName)){ab.delete(bName);b.classList.remove('active')}else{ab.add(bName);b.classList.add('active')}ft();});
-    fe.appendChild(b);
-  });
-  var label2=document.createElement('div');label2.textContent='Profile: ';label2.style.cssText='color:#888;font-size:.7rem;padding:4px 0;width:100%;margin-top:8px';
-  fe.appendChild(label2);
-  var psArr=Array.from(ps).sort();
-  psArr.forEach(function(p){
-    var b=document.createElement('button');b.className='filter-btn';b.textContent=p;b.dataset.profile=p;
-    b.addEventListener('click',function(){if(af.has(p)){af.delete(p);b.classList.remove('active')}else{af.add(p);b.classList.add('active')}ft();});
-    fe.appendChild(b);
-  });
-  var cb=document.createElement('button');cb.className='filter-btn';cb.textContent='\u2716 clear all filters';
-  cb.addEventListener('click',function(){af.clear();ab.clear();document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active')});document.getElementById('search').value='';ft()});
-  fe.appendChild(cb);
-  rt(a);
-  if(DB.meta&&DB.meta.lastUpdated)document.getElementById('upd').textContent='Updated: '+DB.meta.lastUpdated;
-}
-
 // --- BOOT ---
 if(isMobile()){initMobile()}else{document.getElementById('search').addEventListener('input',ft);initDesktop()}
 </script></body></html>
