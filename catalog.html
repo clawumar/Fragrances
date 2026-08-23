@@ -13,13 +13,6 @@ h1{font-size:1.3rem;color:#fff;margin-bottom:2px}
 .filter-btn{padding:4px 10px;background:#1a1a1a;border:1px solid #333;border-radius:20px;color:#aaa;font-size:.75rem;cursor:pointer}
 .filter-btn:hover{border-color:#6366f1;color:#fff}
 .filter-btn.active{background:#6366f1;border-color:#6366f1;color:#fff}
-.tbl-wrap{overflow-x:auto;border-radius:6px;border:1px solid #222}
-table{width:100%;border-collapse:collapse;font-size:.78rem}
-th{background:#1a1a1a;color:#888;text-transform:uppercase;font-size:.65rem;letter-spacing:.5px;padding:8px 10px;text-align:left;border-bottom:2px solid #333;position:sticky;top:0;white-space:nowrap}
-td{padding:7px 10px;border-bottom:1px solid #1a1a1a;vertical-align:top}
-tr:hover td{background:#1a1a1a}
-.fname{font-weight:600;color:#fff;white-space:nowrap}
-.brand{color:#818cf8}
 .tag{display:inline-block;padding:1px 6px;background:#1e1b4b;color:#a5b4fc;border-radius:10px;font-size:.65rem;margin:1px;white-space:nowrap}
 .nt{display:inline-block;padding:1px 5px;background:#1a1a1a;color:#aaa;border-radius:3px;font-size:.68rem;margin:1px}
 .tbadge{padding:1px 6px;border-radius:3px;font-size:.68rem;font-weight:600}
@@ -30,6 +23,41 @@ tr:hover td{background:#1a1a1a}
 .lv-bar{height:3px;border-radius:2px;margin-top:3px;width:50px}
 .nr{text-align:center;padding:30px;color:#555;font-size:.85rem}
 .upd{color:#555;font-size:.7rem;margin-top:12px}
+
+/* Desktop: table */
+table{width:100%;border-collapse:collapse;font-size:.78rem;display:table}
+th{background:#1a1a1a;color:#888;text-transform:uppercase;font-size:.65rem;letter-spacing:.5px;padding:8px 10px;text-align:left;border-bottom:2px solid #333;position:sticky;top:0;white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid #1a1a1a;vertical-align:top}
+tr:hover td{background:#1a1a1a}
+.fname{font-weight:600;color:#fff;white-space:nowrap}
+.brand{color:#818cf8}
+
+/* Mobile: card layout */
+@media(max-width:768px){
+  body{padding:10px}
+  h1{font-size:1.1rem}
+  .stat{padding:6px 10px;font-size:.7rem}
+  .stat-v{font-size:.95rem}
+  .filters{gap:4px}
+  .filter-btn{font-size:.68rem;padding:3px 8px}
+  table,thead,tbody,th,td,tr{display:block}
+  thead{display:none}
+  .tbl-wrap{border:none;overflow:visible}
+  .tbl-wrap table tr{display:flex;flex-direction:column;background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:12px;margin-bottom:10px}
+  .tbl-wrap table tr:hover td{background:transparent}
+  .tbl-wrap table td{border:none;padding:2px 0;font-size:.8rem;display:flex;flex-wrap:wrap;gap:3px}
+  .tbl-wrap table td:before{content:attr(data-label);color:#888;font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;width:100%;margin-bottom:1px}
+  .tbl-wrap table td.fname:before{display:none}
+  .tbl-wrap table td.fname{font-size:.95rem;margin-bottom:4px;padding:0}
+  .tbl-wrap table td.brand:before{display:none}
+  .tbl-wrap table td.brand{color:#818cf8;font-size:.82rem;margin-bottom:6px;padding:0}
+  .tbl-wrap table td .lv-bar{display:inline-block;vertical-align:middle;margin:0 0 0 4px}
+}
+
+/* Dark scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#1a1a1a}
+::-webkit-scrollbar-thumb{background:#444;border-radius:3px}
 </style></head><body>
 <h1>🧴 Umar's Fragrance Collection</h1>
 <p class="sub"><span id="cnt">0</span> fragrances</p>
@@ -3890,6 +3918,7 @@ function allf(){var a=[];for(var k in DB.fragrances)a.push(DB.fragrances[k]);ret
 function rt(f){
   var tb=document.getElementById('tbody');
   if(!f.length){tb.innerHTML='<tr><td colspan="11" class="nr">No fragrances found.</td></tr>';return}
+  var isMobile=window.innerWidth<=768;
   var r=[];
   for(var i=0;i<f.length;i++){
     var g=f[i];
@@ -3902,7 +3931,22 @@ function rt(f){
     var lon=g.longevity||'';
     var bar=lon?'<div class="lv-bar" style="background:'+lc(lon)+'"></div>':'';
     var sil=g.sillage||'';
-    r.push('<tr><td class="fname">'+(g.name||'')+'</td><td class="brand">'+(g.brand||'')+'</td><td><span class="tbadge '+tc(g.type)+'">'+(g.type||'')+'</span></td><td>'+sp+'</td><td>'+tn+'</td><td>'+hn+'</td><td>'+bn+'</td><td>'+sn+'</td><td>'+lon+bar+'</td><td>'+sil+'</td><td>'+tg+'</td></tr>');
+    if(isMobile){
+      r.push('<tr>'+
+        '<td class="fname">'+(g.name||'')+'</td>'+
+        '<td class="brand">'+(g.brand||'')+'</td>'+
+        '<td data-label="Type"><span class="tbadge '+tc(g.type)+'">'+(g.type||'')+'</span></td>'+
+        '<td data-label="Profile">'+sp+'</td>'+
+        '<td data-label="Top">'+tn+'</td>'+
+        '<td data-label="Heart">'+hn+'</td>'+
+        '<td data-label="Base">'+bn+'</td>'+
+        '<td data-label="Season">'+sn+'</td>'+
+        '<td data-label="Longevity">'+lon+bar+'</td>'+
+        '<td data-label="Sillage">'+sil+'</td>'+
+        '<td data-label="Tags">'+tg+'</td></tr>');
+    } else {
+      r.push('<tr><td class="fname">'+(g.name||'')+'</td><td class="brand">'+(g.brand||'')+'</td><td><span class="tbadge '+tc(g.type)+'">'+(g.type||'')+'</span></td><td>'+sp+'</td><td>'+tn+'</td><td>'+hn+'</td><td>'+bn+'</td><td>'+sn+'</td><td>'+lon+bar+'</td><td>'+sil+'</td><td>'+tg+'</td></tr>');
+    }
   }
   tb.innerHTML=r.join('');
 }
@@ -3967,5 +4011,9 @@ function init(){
   if(DB.meta&&DB.meta.lastUpdated)document.getElementById('upd').textContent='Updated: '+DB.meta.lastUpdated;
 }
 document.getElementById('search').addEventListener('input',ft);
+window.addEventListener('resize',function(){
+  var q=document.getElementById('search').value.toLowerCase();
+  if(!q&&af.size==0&&ab.size==0){ft()} // re-render on resize only if no active filters
+});
 init();
 </script></body></html>
