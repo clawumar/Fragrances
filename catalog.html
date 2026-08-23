@@ -94,6 +94,7 @@ h1{font-size:1.3rem;color:#fff;margin-bottom:2px}
   <div class="mode-switch" id="modeSwitch">
     <div class="mode-btn active" data-mode="brand">🏷️ Brand</div>
     <div class="mode-btn" data-mode="note">🎨 Notes</div>
+    <div class="mode-btn" data-mode="profile">🔥 Profile</div>
     <div class="mode-btn" data-mode="layer">🎲 Layer</div>
   </div>
   <div id="filters" style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px"></div>
@@ -4002,9 +4003,15 @@ function getFiltered(){
   if(mobileMode == 'note' && selectedCat){
     a = a.filter(function(f){ return getCategory(f) === selectedCat; });
   }
-  // Category filter (Notes mode)
-  if(ac.size > 0){
+  if(mobileMode == 'note' && ac.size > 0){
     a = a.filter(function(f){ return ac.has(getCategory(f)); });
+  }
+  if(mobileMode == 'profile' && af.size > 0){
+    a = a.filter(function(f){
+      var sp = f.scentProfile || [];
+      for(var i=0;i<sp.length;i++){ if(af.has(sp[i])) return true; }
+      return false;
+    });
   }
   if(q){
     a = a.filter(function(f){
@@ -4152,36 +4159,10 @@ function showLayerFit(fragId){
 
 function renderMobile(){
   document.getElementById('layerCombo').style.display = 'none';
+  document.getElementById('mobilePicks').innerHTML = '';
   var a = getFiltered();
   document.getElementById('cntM').textContent = a.length;
-  var picksDiv = document.getElementById('mobilePicks');
   var resultsDiv = document.getElementById('mobileResults');
-  
-  if(mobileMode == 'brand'){
-    var bs = new Set();
-    allf().forEach(function(f){if(f.brand)bs.add(f.brand)});
-    var brands = Array.from(bs).sort(function(a,b){
-      return allf().filter(function(f){return f.brand===b}).length - allf().filter(function(f){return f.brand===a}).length;
-    });
-    var grid = '<div class="brand-grid">';
-    brands.forEach(function(b){
-      var cnt = allf().filter(function(f){return f.brand===b}).length;
-      var active = ab.has(b) ? ' active' : '';
-      grid += '<div class="brand-pill'+active+'" onclick="toggleBrand(\''+b.replace(/'/g,"\\'")+'\')">'+b+' <span class="bcnt">'+cnt+'</span></div>';
-    });
-    grid += '</div>';
-    picksDiv.innerHTML = grid;
-  } else if(mobileMode == 'note'){
-    var cats = CAT_ORDER;
-    var grid = '<div class="note-grid">';
-    cats.forEach(function(c){
-      var cnt = categoryCount(c);
-      var active = (selectedCat === c) ? ' active' : '';
-      grid += '<div class="note-pill'+active+'" onclick="selectCat(\''+c+'\')">'+c+' <span class="ncount">'+cnt+'</span></div>';
-    });
-    grid += '</div>';
-    picksDiv.innerHTML = grid;
-  }
   
   if(a.length === 0){
     resultsDiv.innerHTML = '<div class="nr">No fragrances found.</div>';
@@ -4224,6 +4205,7 @@ function switchMode(mode){
   mobileMode = mode;
   ab.clear();
   ac.clear();
+  af.clear();
   selectedCat = '';
   document.querySelectorAll('.mode-btn').forEach(function(b){
     b.classList.toggle('active', b.dataset.mode === mode);
@@ -4261,6 +4243,28 @@ function buildDesktopFilters(){
       });
       fe.appendChild(b);
     });
+  } else if(mobileMode === 'profile'){
+    // Show individual scentProfile pills
+    var profLabel = document.createElement('div');
+    profLabel.className = 'filter-label';
+    profLabel.textContent = 'Profile: ';
+    fe.appendChild(profLabel);
+    var ps = new Set();
+    allf().forEach(function(f){ (f.scentProfile||[]).forEach(function(p){ ps.add(p); }); });
+    var psArr = Array.from(ps).sort();
+    psArr.forEach(function(p){
+      var cnt = 0;
+      allf().forEach(function(f){ if((f.scentProfile||[]).indexOf(p) >= 0) cnt++; });
+      var b = document.createElement('button');
+      b.className = 'filter-btn';
+      b.textContent = p + ' (' + cnt + ')';
+      b.addEventListener('click', function(){
+        if(af.has(p)){ af.delete(p); b.classList.remove('active'); }
+        else{ af.add(p); b.classList.add('active'); }
+        renderMobile();
+      });
+      fe.appendChild(b);
+    });
   } else if(mobileMode === 'brand'){
     // Show brand pills
     var brandLabel = document.createElement('div');
@@ -4293,7 +4297,7 @@ function buildDesktopFilters(){
   cb.textContent = '✖ clear';
   cb.style.marginTop = '6px';
   cb.addEventListener('click', function(){
-    ac.clear(); ab.clear();
+    ac.clear(); ab.clear(); af.clear();
     document.querySelectorAll('#filters .filter-btn').forEach(function(b){ b.classList.remove('active'); });
     document.getElementById('searchM').value = '';
     renderMobile();
