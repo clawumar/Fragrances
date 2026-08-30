@@ -3961,35 +3961,405 @@ function tc(t){if(!t)return 'tother';var x=t.toLowerCase();if(x.indexOf('edp')>=
 function lc(l){if(!l)return '#333';var m={'weak':'#ef4444','moderate':'#f59e0b','good':'#22c55e','excellent':'#10b981','strong':'#22c55e','beast':'#6366f1'};return m[l.toLowerCase().trim()]||'#666'}
 function allf(){var a=[];for(var k in DB.fragrances)a.push(DB.fragrances[k]);return a}
 
-// --- NOTE CATEGORIES ---
-// Priority-based: first category whose keyword matches wins
-var CAT_ORDER = ['Gourmand','Amber/Oriental','Woody','Floral','Fresh'];
-var CAT_KEYWORDS = {
-  'Gourmand': ['Gourmand','Cherry'],
-  'Amber/Oriental': ['Amber','Oriental','Warm Spicy','Boozy','Incense','Incense-like','Resinous','Animalic','Tobacco','Honey','Nutty','Cinnamon','Chypre'],
-  'Woody': ['Woody','Oud','Leather','Leathery','Earthy','Smoky','Musk','Musky','Metallic','Dark'],
-  'Floral': ['Floral','White Floral','Floral Fruity','Rose','Iris','Feminine'],
-  'Fresh': ['Fresh','Citrus','Aromatic','Aquatic','Green','Icy','Minty','Soapy','Tea','Clean','Marine','Bright','Citrus-forward','Airy','Zesty','Salty','Summer','Tropical','Fruity','Spicy','Sweet','Vanilla','Vanillic','Creamy','Powdery','Smooth','Warm','Bold','Explosive','Elegant','Luxurious','Sophisticated','Masculine','Unisex','Bozyz']
+// === LAYERING ENGINE v2 ===
+// Based on Michael Edwards Fragrance Wheel + real note compatibility science
+
+// ---- WHEEL FAMILIES ----
+var PROFILE_TO_FAMILY = {
+  'Fresh':'Fresh','Citrus':'Fresh','Citrus-forward':'Fresh',
+  'Aromatic':'Fresh','Green':'Fresh','Aquatic':'Fresh',
+  'Marine':'Fresh','Water':'Fresh','Salty':'Fresh',
+  'Icy':'Fresh','Minty':'Fresh','Soapy':'Fresh','Clean':'Fresh',
+  'Tea':'Fresh','Bright':'Fresh','Airy':'Fresh','Zesty':'Fresh',
+  'Woody':'Woody','Oud':'Woody','Leather':'Woody','Leathery':'Woody',
+  'Earthy':'Woody','Smoky':'Woody','Resinous':'Woody',
+  'Musk':'Woody','Musky':'Woody','Metallic':'Woody','Dark':'Woody',
+  'Amber':'Amber/Oriental','Oriental':'Amber/Oriental',
+  'Warm':'Amber/Oriental','Warm Spicy':'Amber/Oriental',
+  'Boozy':'Amber/Oriental','Incense':'Amber/Oriental',
+  'Incense-like':'Amber/Oriental',
+  'Animalic':'Amber/Oriental','Tobacco':'Amber/Oriental',
+  'Honey':'Amber/Oriental','Nutty':'Amber/Oriental',
+  'Cinnamon':'Amber/Oriental','Chypre':'Amber/Oriental',
+  'Spicy':'Amber/Oriental',
+  'Floral':'Floral','White Floral':'Floral',
+  'Floral Fruity':'Floral','Rose':'Floral','Iris':'Floral',
+  'Feminine':'Floral','Powdery':'Floral',
+  'Sweet':'Gourmand','Vanilla':'Gourmand','Vanillic':'Gourmand',
+  'Gourmand':'Gourmand','Creamy':'Gourmand','Cherry':'Gourmand',
+  'Bold':'Gourmand','Tropical':'Gourmand',
+  'Fruity':'Gourmand','Smooth':'Gourmand'
 };
 
-function getCategory(f){
-  var sp = (f.scentProfile||[]).map(function(p){ return p.toLowerCase().trim(); });
-  for(var ci=0; ci<CAT_ORDER.length; ci++){
-    var cat = CAT_ORDER[ci];
-    var kws = CAT_KEYWORDS[cat];
-    for(var ki=0; ki<kws.length; ki++){
-      if(sp.indexOf(kws[ki].toLowerCase().trim()) >= 0) return cat;
-    }
+function classifyFamily(f) {
+  var sp = (f.scentProfile || []).map(function(p){ return p.trim(); });
+  var scores = {'Fresh':0,'Woody':0,'Amber/Oriental':0,'Floral':0,'Gourmand':0};
+  for (var i = 0; i < sp.length; i++) {
+    var mapped = PROFILE_TO_FAMILY[sp[i]];
+    if (mapped) scores[mapped] += 2;
   }
-  return 'Fresh';
+  var baseSet = (f.baseNotes || []).map(function(n){ return n.toLowerCase(); });
+  var heartSet = (f.heartNotes || []).map(function(n){ return n.toLowerCase(); });
+  for (var k = 0; k < baseSet.length; k++) {
+    var b = baseSet[k];
+    if (b.indexOf('oud')>=0||b.indexOf('agarwood')>=0||b.indexOf('leather')>=0) scores['Woody'] += 1;
+    if (b.indexOf('vanilla')>=0||b.indexOf('tonka')>=0||b.indexOf('caramel')>=0||b.indexOf('praline')>=0) scores['Gourmand'] += 1;
+    if (b.indexOf('incense')>=0||b.indexOf('amber')>=0||b.indexOf('labdanum')>=0||b.indexOf('benzoin')>=0) scores['Amber/Oriental'] += 1;
+  }
+  var topSet = (f.topNotes || []).map(function(n){ return n.toLowerCase(); });
+  for (var t = 0; t < topSet.length; t++) {
+    var tp = topSet[t];
+    if (tp.indexOf('bergamot')>=0||tp.indexOf('lemon')>=0||tp.indexOf('grapefruit')>=0||tp.indexOf('citrus')>=0||tp.indexOf('orange')>=0||tp.indexOf('lime')>=0||tp.indexOf('mandarin')>=0) scores['Fresh'] += 1;
+    if (tp.indexOf('mint')>=0||tp.indexOf('spearmint')>=0) scores['Fresh'] += 1;
+    if (tp.indexOf('cinnamon')>=0||tp.indexOf('cardamom')>=0||tp.indexOf('saffron')>=0) scores['Amber/Oriental'] += 1;
+  }
+  for (var h = 0; h < heartSet.length; h++) {
+    var ht = heartSet[h];
+    if (ht.indexOf('rose')>=0||ht.indexOf('jasmine')>=0||ht.indexOf('lavender')>=0||ht.indexOf('violet')>=0||ht.indexOf('peony')>=0||ht.indexOf('magnolia')>=0||ht.indexOf('geranium')>=0||ht.indexOf('iris')>=0) scores['Floral'] += 1;
+  }
+  var best = 'Fresh', bestScore = 0;
+  var fams = ['Fresh','Woody','Amber/Oriental','Floral','Gourmand'];
+  for (var f = 0; f < fams.length; f++) {
+    if (scores[fams[f]] > bestScore) { bestScore = scores[fams[f]]; best = fams[f]; }
+  }
+  return best;
 }
 
-function categoryCount(cat){
-  var c = 0;
-  for(var k in DB.fragrances){
-    if(getCategory(DB.fragrances[k]) === cat) c++;
+// ---- NOTE COMPATIBILITY ----
+var COMPAT_NOTES = {
+  'bergamot':['lavender','rose','vetiver','oakmoss','cedar','neroli','jasmine','vanilla','amber'],
+  'vanilla':['amber','sandalwood','rose','bergamot','cinnamon','tonkabean','coffee','caramel','benzoin'],
+  'sandalwood':['rose','jasmine','vanilla','iris','bergamot','lavender','amber'],
+  'rose':['bergamot','vanilla','sandalwood','patchouli','cacao','pepper','raspberry'],
+  'jasmine':['sandalwood','vanilla','rose','bergamot','cedar'],
+  'amber':['vanilla','sandalwood','patchouli','bergamot','rose','incense'],
+  'cedar':['bergamot','lavender','sandalwood','vetiver','rose','amber'],
+  'tonka bean':['vanilla','amber','lavender','sandalwood','cinnamon'],
+  'lavender':['bergamot','cedar','vanilla','oakmoss','sage'],
+  'patchouli':['rose','bergamot','sandalwood','vanilla','incense','amber'],
+  'musk':['rose','jasmine','vanilla','sandalwood','iris','amber'],
+  'cinnamon':['vanilla','orange','amber','tonka bean','apple'],
+  'incense':['sandalwood','rose','amber','patchouli','oud','myrrh'],
+  'oud':['rose','sandalwood','amber','incense','saffron','leather','vanilla'],
+  'leather':['iris','sandalwood','amber','tobacco','pepper','raspberry'],
+  'tobacco':['vanilla','leather','amber','honey','tonka bean'],
+  'orange':['cinnamon','vanilla','sandalwood','jasmine'],
+  'lemon':['ginger','jasmine','rose','vetiver','mint'],
+  'ginger':['lemon','bergamot','rose','jasmine','cardamom'],
+  'grapefruit':['rosemary','juniper','cedar','mint'],
+  'coffee':['vanilla','caramel','tonka bean','amber','patchouli','cardamom'],
+  'cardamom':['ginger','cinnamon','rose','vanilla','cedar','fig'],
+  'raspberry':['rose','violet','vanilla','sandalwood','leather','bergamot'],
+  'fig':['cardamom','sandalwood','cedar','bergamot','coriander'],
+  'mint':['lemon','lime','ginger','lavender','bergamot','jasmine'],
+  'coconut':['lime','vanilla','jasmine','pineapple'],
+  'tonkabean':['vanilla','amber','lavender','sandalwood','cinnamon']
+};
+
+var BRIDGE_NOTES = {
+  'vanilla':['Gourmand','Amber/Oriental','Fresh'],
+  'bergamot':['Fresh','Floral','Woody'],
+  'sandalwood':['Woody','Floral','Amber/Oriental'],
+  'amber':['Amber/Oriental','Woody','Gourmand'],
+  'tonka bean':['Gourmand','Amber/Oriental','Fresh'],
+  'cedar':['Woody','Fresh'],
+  'rose':['Floral','Amber/Oriental','Woody'],
+  'lavender':['Fresh','Floral','Woody'],
+  'patchouli':['Woody','Amber/Oriental','Floral'],
+  'musk':['Woody','Floral','Fresh'],
+  'incense':['Amber/Oriental','Woody'],
+  'cinnamon':['Amber/Oriental','Gourmand','Fresh']
+};
+
+function wheelDistance(famA,famB){
+  if(famA===famB) return 0;
+  var o=['Fresh','Gourmand','Amber/Oriental','Woody','Floral'];
+  var a=o.indexOf(famA),b=o.indexOf(famB);
+  if(a===-1||b===-1) return 9;
+  if(famA==='Gourmand'){ if(famB==='Fresh'||famB==='Amber/Oriental') return 1; return 2; }
+  if(famB==='Gourmand'){ if(famA==='Fresh'||famA==='Amber/Oriental') return 1; return 2; }
+  var d=Math.abs(a-b);
+  if(d===1) return 1; if(d===2) return 2; if(d===3) return 3; return 4;
+}
+
+function getNoteSet(f){
+  var s={};(f.topNotes||[]).forEach(function(n){s[n.toLowerCase().trim()]=1});
+  (f.heartNotes||[]).forEach(function(n){s[n.toLowerCase().trim()]=1});
+  (f.baseNotes||[]).forEach(function(n){s[n.toLowerCase().trim()]=1});
+  return Object.keys(s);
+}
+
+function scoreNotes(a,b){
+  var an=getNoteSet(a),bn=getNoteSet(b);
+  var shared=0,complementary=0,bridge=0;
+  for(var i=0;i<an.length;i++){for(var j=0;j<bn.length;j++){if(an[i]===bn[j])shared++;}}
+  for(var i=0;i<an.length;i++){var c=COMPAT_NOTES[an[i]];if(c){for(var j=0;j<bn.length;j++){if(c.indexOf(bn[j])>=0&&an[i]!==bn[j])complementary++;}}}
+  var aF=classifyFamily(a),bF=classifyFamily(b);
+  if(aF!==bF){
+    for(var i=0;i<an.length;i++){var bf=BRIDGE_NOTES[an[i]];if(bf&&bf.indexOf(bF)>=0)bridge+=2;}
+    for(var j=0;j<bn.length;j++){var bf2=BRIDGE_NOTES[bn[j]];if(bf2&&bf2.indexOf(aF)>=0)bridge+=2;}
   }
-  return c;
+  return {shared:shared,complementary:complementary,bridge:bridge,total:shared*3+complementary*2+bridge};
+}
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function bestDirection(a,b){
+  var wLong=['Beast','Excellent','Good','Moderate','Weak'];
+  var wSil=['Heavy','Strong','Good','Moderate','Weak','Light'];
+  var aLi=wLong.indexOf(a.longevity)>=0?wLong.indexOf(a.longevity):9;
+  var bLi=wLong.indexOf(b.longevity)>=0?wLong.indexOf(b.longevity):9;
+  var aSi=wSil.indexOf(a.sillage)>=0?wSil.indexOf(a.sillage):9;
+  var bSi=wSil.indexOf(b.sillage)>=0?wSil.indexOf(b.sillage):9;
+  var aStr=aLi*2+aSi,bStr=bLi*2+bSi;
+  if(aStr<=bStr) return {base:a,top:b};
+  return {base:b,top:a};
+}
+
+function pickBridgeNoteExamples(a,b,famA,famB){
+  var an=getNoteSet(a),bn=getNoteSet(b),ex=[];
+  for(var i=0;i<an.length;i++){var bf=BRIDGE_NOTES[an[i]];if(bf&&bf.indexOf(famB)>=0&&ex.indexOf(an[i])<0)ex.push(an[i]);}
+  for(var j=0;j<bn.length;j++){var bf2=BRIDGE_NOTES[bn[j]];if(bf2&&bf2.indexOf(famA)>=0&&ex.indexOf(bn[j])<0)ex.push(bn[j]);}
+  return ex.slice(0,3).join(', ')||'vanilla or citrus';
+}
+
+function pickSharedNotes(a,b){
+  var nm={};
+  var aa=(a.topNotes||[]).concat(a.heartNotes||[]).concat(a.baseNotes||[]);
+  aa.forEach(function(n){nm[n.toLowerCase().trim()]=n.trim();});
+  var sh=[];
+  var bb=(b.topNotes||[]).concat(b.heartNotes||[]).concat(b.baseNotes||[]);
+  bb.forEach(function(n){
+    var k=n.toLowerCase().trim();
+    if(nm[k]!==undefined&&sh.indexOf(nm[k])<0) sh.push(nm[k]);
+  });
+  return sh;
+}
+
+function pickCompPairs(a,b){
+  var aS=getNoteSet(a),bS=getNoteSet(b);
+  var aD={},bD={};
+  var aa=(a.topNotes||[]).concat(a.heartNotes||[]).concat(a.baseNotes||[]);
+  aa.forEach(function(n){aD[n.toLowerCase().trim()]=n.trim();});
+  var bb=(b.topNotes||[]).concat(b.heartNotes||[]).concat(b.baseNotes||[]);
+  bb.forEach(function(n){bD[n.toLowerCase().trim()]=n.trim();});
+  var pr=[];
+  for(var i=0;i<aS.length;i++){
+    var cp=COMPAT_NOTES[aS[i]];
+    if(!cp) continue;
+    for(var j=0;j<bS.length;j++){
+      if(aS[i]===bS[j]) continue;
+      if(cp.indexOf(bS[j])>=0){
+        var an=aD[aS[i]]||aS[i],bn=bD[bS[j]]||bS[j];
+        var ps=an+' \u2194 '+bn;
+        if(pr.indexOf(ps)<0) pr.push(ps);
+      }
+    }
+  }
+  return pr;
+}
+
+function seasonOverlap(a,b){
+  var sA=(a.season||[]).map(function(s){return s.toLowerCase().trim();});
+  var sB=(b.season||[]).map(function(s){return s.toLowerCase().trim();});
+  var both=[];
+  for(var i=0;i<sA.length;i++){
+    if(sB.indexOf(sA[i])>=0&&both.indexOf(sA[i])<0) both.push(sA[i]);
+  }
+  return both;
+}
+
+function getSeasonEmoji(s){
+  var m={'spring':'\ud83c\udf38','summer':'\u2600\ufe0f','fall':'\ud83c\udf42','winter':'\u2744\ufe0f','all seasons':'\ud83c\udf3f'};
+  return m[s.toLowerCase().trim()]||'\u2728';
+}
+
+function pickSeasonMatch(a,b){
+  var ov=seasonOverlap(a,b);
+  var sAll=(a.season||[]).concat(b.season||[]).filter(function(s,i,self){return self.indexOf(s)===i;});
+  if(ov.length>0){
+    var s=pick(ov);
+    var cap=s.charAt(0).toUpperCase()+s.slice(1);
+    return 'Perfect for '+cap+' '+getSeasonEmoji(s)+' — both shine in that weather.';
+  }
+  if(sAll.length===1){
+    return 'Best for '+sAll[0]+' '+getSeasonEmoji(sAll[0])+' wear.';
+  }
+  if(sAll.length>=2){
+    var trans=['Spring-to-Summer transition','Summer-to-Fall crossover','Fall-to-Winter layering season','versatile transitional weather','year-round adaptability'];
+    return 'Great for '+pick(trans)+' — spans their seasonal sweet spots.';
+  }
+  return 'A year-round pairing.';
+}
+
+function formatNoteList(arr){
+  if(!arr||arr.length===0) return '';
+  if(arr.length===1) return arr[0];
+  if(arr.length===2) return arr[0]+' and '+arr[1];
+  var out='';
+  for(var i=0;i<arr.length-1;i++){out+=arr[i]+', ';}
+  return out+'and '+arr[arr.length-1];
+}
+
+function pickProfileWords(a){
+  var sp=a.scentProfile||[];
+  if(sp.length===0) return [''];
+  if(sp.length===1) return [sp[0]];
+  var ct=Math.min(2,sp.length);
+  var sh=sp.slice().sort(function(){return Math.random()-0.5;});
+  return sh.slice(0,ct);
+}
+
+function genReason(a,b,famA,famB,ovl){
+  var pv=function(vs){return vs[Math.floor(Math.random()*vs.length)];};
+  var nA=a.name,nB=b.name;
+  var shared=pickSharedNotes(a,b);
+  var compPairs=pickCompPairs(a,b);
+  var pA=pickProfileWords(a),pB=pickProfileWords(b);
+  var pSA=(pA[0]||'')+(pA[1]?'-'+pA[1]:''),pSB=(pB[0]||'')+(pB[1]?'-'+pB[1]:'');
+  var sno=pickSeasonMatch(a,b);
+  var dist=wheelDistance(famA,famB);
+  
+  // T1: >=2 shared notes
+  if(shared.length>=2){
+    var nl=formatNoteList(shared.slice(0,3));
+    return pv([
+      'Both share **'+nl+'** — that is a perfumer’s handshake. These two speak the same language. Layer '+(shared.length>=3?'equal parts for a balanced chorus':'with a 2:1 ratio favoring the deeper one')+'. '+sno,
+      '**'+nl+'** appear in both — a built-in bridge. The overlap creates a seamless blend rather than a collision. Try '+nA+' on skin, '+nB+' on clothes for a layered reveal. '+sno,
+      'The shared **'+nl+'** act as a common thread — these were meant to intersect. Start with 2 sprays of the heavier, 1 of the lighter. Let them breathe. '+sno
+    ]);
+  }
+  
+  // T2: 1 shared + complementary pairs
+  if(shared.length===1&&compPairs.length>=2){
+    var nn=shared[0];
+    var ps=compPairs.slice(0,2).join('; ');
+    return pv([
+      'The shared **'+nn+'** anchors the blend, while pairs like '+ps+' add dimension. Think of '+nn+' as the canvas, the complements as brush strokes. '+sno,
+      '**'+nn+'** is the handshake between these two — pairs like '+ps+' are the conversation. Layer '+nA+' first, then dab '+nB+' on pulse points. '+sno,
+      'With **'+nn+'** as common ground and complementary echoes ('+ps+'), this pairing feels intentional. Try a 3:2 ratio for depth. '+sno
+    ]);
+  }
+  
+  // T3: Same family, complementary notes
+  if(famA===famB&&ovl.complementary>=2){
+    return pv([
+      'Both are **'+famA+'**, but '+nA+' leans '+pSA+' while '+nB+' is '+pSB+'. The complementary notes create contrast within the family — a brilliant expression of shared DNA. '+sno,
+      'Same **'+famA+'** lineage, different dialects. The '+pSA+' character of '+nA+' plays beautifully off '+nB+'s '+pSB+' energy. Two sides of the same coin. '+sno,
+      'Inside the **'+famA+'** universe, '+nA+' ('+pSA+') and '+nB+' ('+pSB+') find harmony through complementary notes. The deeper one on skin, the brighter on collar. '+sno
+    ]);
+  }
+  
+  // T4: Same family, low overlap
+  if(famA===famB){
+    var ddir=bestDirection(a,b);
+    var bName=ddir.base.name,tName=ddir.top.name;
+    return pv([
+      'Same **'+famA+'** DNA, different expression. Layer **'+bName+'** first for depth, then **'+tName+'** for brightness — the contrast highlights both. '+sno,
+      'Two takes on **'+famA+'**: '+nA+' ('+pSA+') and '+nB+' ('+pSB+'). Let the deeper one anchor on skin, the lighter dance on top. Curated layering at its finest. '+sno,
+      'Within the **'+famA+'** family, '+nA+' and '+nB+' explore different corners. **'+bName+'** builds the foundation; **'+tName+'** adds the flourish. '+sno
+    ]);
+  }
+  
+  // T5: Adjacent (dist===1)
+  if(dist===1){
+    var t5v=[
+      nA+' (**'+famA+'**) steps into '+nB+'s (**'+famB+'**) territory gracefully. '+pSA+' + '+pSB+' creates a balanced silhouette — structured but soft at the edges. '+sno,
+      'Adjacent on the wheel: **'+famA+'** and **'+famB+'** flow naturally. The '+pSA+' character of '+nA+' meets '+nB+'s '+pSB+' in a seamless transition. '+sno
+    ];
+    if(ovl.bridge>0){
+      var be=pickBridgeNoteExamples(a,b,famA,famB);
+      t5v.push('**'+famA+'** and **'+famB+'** are neighbours on the wheel — an easy transition — and bridge notes ('+be+') make the connection effortless. '+sno);
+    }
+    return pv(t5v);
+  }
+  
+  // T6: dist===2 with bridge
+  if(dist===2&&ovl.bridge>0){
+    var be=pickBridgeNoteExamples(a,b,famA,famB);
+    return pv([
+      nA+' is **'+famA+'**, '+nB+' is **'+famB+'** — two steps apart, but '+be+' act as translators. Apply the stronger on skin, the other on clothes. '+sno,
+      'Two steps apart on the wheel, yet notes like '+be+' create a subtle connection. Unexpected, sophisticated, and wholly original. '+sno
+    ]);
+  }
+  
+  // T7: dist===2 no bridge
+  if(dist===2){
+    return pv([
+      nA+' is '+pSA+' territory, '+nB+' is '+pSB+' — this is an adventurous pairing. Spray the base on pulse points, the top on fabric. Let them meet in the air. '+sno,
+      'Two steps apart with no obvious bridge — this is for those who love discovery. The '+pSA+' energy of '+nA+' crashes into '+nB+'s '+pSB+' world. Start with 1 spray each. '+sno
+    ]);
+  }
+  
+  // T8: dist>=3 with bridge
+  if(dist>=3&&ovl.bridge>0){
+    var be=pickBridgeNoteExamples(a,b,famA,famB);
+    return pv([
+      'Despite '+dist+' steps between **'+famA+'** and **'+famB+'**, notes like '+be+' forge an unexpected connection. This is the kind of pairing that makes perfumers smile. '+sno,
+      'An unlikely duo — **'+famA+'** vs **'+famB+'** — but '+be+' create a thread of familiarity. Brave layering for the curious nose. '+sno
+    ]);
+  }
+  
+  // T9: dist>=3 no bridge
+  if(dist>=3){
+    return pv([
+      'This is for the curious nose. '+pSA+' + '+pSB+' don’t collide, they orbit each other. Start with 1 spray each — subtle is sophisticated. '+sno,
+      'An unexpected pairing across '+dist+' wheel steps. The '+pSA+' of '+nA+' meets the '+pSB+' of '+nB+' in uncharted territory. Apply sparingly and let it evolve. '+sno
+    ]);
+  }
+  
+  // T10: Fallback with specific notes
+  var aNs=getNoteSet(a),bNs=getNoteSet(b);
+  var aNt=aNs.length>0?aNs[Math.floor(Math.random()*aNs.length)]:'itself';
+  var bNt=bNs.length>0?bNs[Math.floor(Math.random()*bNs.length)]:'itself';
+  return pv([
+    nA+' ('+famA+', '+pSA+') and '+nB+' ('+famB+', '+pSB+') create an intriguing dialogue. The **'+aNt+'** in '+nA+' whispers to the **'+bNt+'** in '+nB+'. Layer and listen. '+sno,
+    'Every pairing tells a story. '+nA+' brings '+pSA+' energy; '+nB+' counters with '+pSB+'. The **'+aNt+'** note finds company in '+nB+'s **'+bNt+'**. Your signature awaits. '+sno
+  ]);
+}
+
+function rateLayer(aId,bId){
+  var a=DB.fragrances[aId],b=DB.fragrances[bId]; if(!a||!b) return null;
+  var famA=classifyFamily(a),famB=classifyFamily(b);
+  var dist=wheelDistance(famA,famB);
+  var ovl=scoreNotes(a,b);
+  var dir=bestDirection(a,b);
+  var score=dist*3 - Math.min(ovl.total,10);
+  if(famA===famB) score-=2;
+  score+=(ovl.bridge>0?-1:2);
+  return {
+    base: dir.base, top: dir.top,
+    baseId: aId===dir.base?aId:bId, topId: bId===dir.top?bId:aId,
+    reason: genReason(a,b,famA,famB,ovl),
+    score:score, famA:famA, famB:famB, notes:ovl
+  };
+}
+
+function generateLayerCombo(){
+  var ids=Object.keys(DB.fragrances),best=null;
+  for(var at=0;at<200;at++){
+    var aId=ids[Math.floor(Math.random()*ids.length)],bId=ids[Math.floor(Math.random()*ids.length)];
+    if(aId===bId) continue;
+    var r=rateLayer(aId,bId); if(!r) continue;
+    if(!best||r.score<best.score) best=r;
+  }
+  if(best) return best;
+  var aId=ids[0],bId=ids[1]||ids[0];
+  return {base:DB.fragrances[aId],top:DB.fragrances[bId],baseId:aId,topId:bId,reason:'Unexpected pairing.',score:99};
+}
+
+function generateLayerComboFor(fixedId){
+  var fixed=DB.fragrances[fixedId]; if(!fixed) return generateLayerCombo();
+  var ids=Object.keys(DB.fragrances),best=null;
+  for(var at=0;at<200;at++){
+    var pid=ids[Math.floor(Math.random()*ids.length)];
+    if(pid===fixedId) continue;
+    var r=rateLayer(fixedId,pid); if(!r) continue;
+    if(!best||r.score<best.score){best=r;best.locked=fixedId;}
+  }
+  if(best) return best;
+  var pid=ids[0]===fixedId?ids[1]:ids[0];
+  return {base:fixed,top:DB.fragrances[pid]||fixed,baseId:fixedId,topId:pid,reason:'Unexpected pairing.',score:99,locked:fixedId};
 }
 
 // --- FILTER ---
@@ -4000,10 +4370,10 @@ function getFiltered(){
     a = a.filter(function(f){ return f.brand && ab.has(f.brand); });
   }
   if(mobileMode == 'note' && selectedCat){
-    a = a.filter(function(f){ return getCategory(f) === selectedCat; });
+    a = a.filter(function(f){ return classifyFamily(f) === selectedCat; });
   }
   if(mobileMode == 'note' && ac.size > 0){
-    a = a.filter(function(f){ return ac.has(getCategory(f)); });
+    a = a.filter(function(f){ return ac.has(classifyFamily(f)); });
   }
   if(mobileMode == 'profile' && af.size > 0){
     a = a.filter(function(f){
@@ -4020,120 +4390,49 @@ function getFiltered(){
   return a;
 }
 
-// --- LAYERING ---
-var LAYER_REASONS = [
-  ['fresh','warm','The fresh notes lift the warm base, making it brighter without losing depth.'],
-  ['fresh','warm','Crisp freshness cutting through the warmth — balanced and versatile.'],
-  ['fresh','sweet','Clean freshness meets sweetness — a crowd-pleasing combo.'],
-  ['fresh','sweet','The sweetness sticks while the freshness keeps it airy and light.'],
-  ['fresh','dark','Dark and broody lifted by a blast of freshness — unexpected but killer.'],
-  ['fresh','dark','The fresh top cuts through the heavy base like a ray of light.'],
-  ['warm','sweet','Double warmth. Sweet and warm wrap around each other perfectly. Date night material.'],
-  ['warm','sweet','A cozy hug in a bottle. The sweetness amplifies the warmth beautifully.'],
-  ['warm','dark','The darkness provides the edge, the warmth makes it approachable. Power combo.'],
-  ['warm','dark','Bold and brooding with a warm heart. Gets attention without being offensive.'],
-  ['warm','dark','Like a leather jacket with a cashmere lining. Tough outside, cozy within.'],
-  ['sweet','dark','Sweetness tames the beast. The dark notes add complexity while the sweetness rounds it out.'],
-  ['sweet','dark','The sugar and the smoke dance together — sophisticated but playful.'],
-  ['fresh','floral','Crisp clean freshness with a soft floral touch. Elegant and easy.'],
-  ['fresh','floral','The florals float on a bed of fresh air. Light, airy, and endlessly likeable.'],
-  ['warm','floral','Warmth wraps around the florals like a soft blanket. Romantic and comforting.'],
-  ['sweet','floral','Sweet and floral — a classic duo that never gets old.'],
-  ['fresh','fresh','Two freshies layered — double the clean, double the energy. Perfect for scorching days.'],
-  ['sweet','sweet','Double gourmand goodness. For when one sweet scent just isn\'t enough.'],
-  ['spicy','sweet','Like chai with extra honey. Comforting with a kick.'],
-  ['spicy','fresh','Fresh with a bite. The spice adds an edge to otherwise clean freshness.'],
-  ['spicy','dark','Dark, spicy, and dangerous. Maximum intensity for maximum confidence.'],
-  ['spicy','dark','A powerhouse combo. The spice ignites the dark base.']
-];
-
-function getFragProfileFamily(f) {
-  return getCategory(f).toLowerCase();
-}
-
-function getFragFamilies(f) {
-  var result = {};
-  result[getCategory(f).toLowerCase()] = true;
-  return result;
-}
-
-function isHeavy(f) {
-  var lon = (f.longevity||'').toLowerCase();
-  var sil = (f.sillage||'').toLowerCase();
-  return lon.indexOf('excellent')>=0 || lon.indexOf('beast')>=0 || sil.indexOf('beast')>=0 || sil.indexOf('heavy')>=0 || sil.indexOf('strong')>=0;
-}
-
-function generateLayerCombo(){
-  var ids = Object.keys(DB.fragrances);
-  for(var attempt=0; attempt<80; attempt++){
-    var aId = ids[Math.floor(Math.random()*ids.length)];
-    var bId = ids[Math.floor(Math.random()*ids.length)];
-    if(aId === bId) continue;
-    var a = DB.fragrances[aId], b = DB.fragrances[bId];
-    var aFam = getFragProfileFamily(a), bFam = getFragProfileFamily(b);
-    for(var ri=0; ri<LAYER_REASONS.length; ri++){
-      var recipe = LAYER_REASONS[ri];
-      if(recipe[0] === aFam && recipe[1] === bFam){
-        var aHeavy = isHeavy(a), bHeavy = isHeavy(b);
-        if(aHeavy && !bHeavy) return { base: a, top: b, baseId: aId, topId: bId, reason: recipe[2] };
-        if(bHeavy && !aHeavy) return { base: b, top: a, baseId: bId, topId: aId, reason: recipe[2] };
-        if(Math.random()<0.5) return { base: a, top: b, baseId: aId, topId: bId, reason: recipe[2] };
-        else return { base: b, top: a, baseId: bId, topId: aId, reason: recipe[2] };
-      }
-    }
-  }
-  var aId = ids[Math.floor(Math.random()*ids.length)];
-  var bId = ids[Math.floor(Math.random()*ids.length)];
-  return { base: DB.fragrances[aId], top: DB.fragrances[bId], baseId: aId, topId: bId,
-    reason: 'An unexpected pairing that just works. Spray the heavier one first, then layer lightly.' };
-}
-
-function generateLayerComboFor(fixedId){
-  var ids = Object.keys(DB.fragrances);
-  var fixed = DB.fragrances[fixedId];
-  if(!fixed) return generateLayerCombo();
-  var fixedFam = getFragProfileFamily(fixed);
-  for(var attempt=0; attempt<80; attempt++){
-    var partnerId = ids[Math.floor(Math.random()*ids.length)];
-    if(partnerId === fixedId) continue;
-    var partner = DB.fragrances[partnerId];
-    var partnerFam = getFragProfileFamily(partner);
-    for(var ri=0; ri<LAYER_REASONS.length; ri++){
-      var recipe = LAYER_REASONS[ri];
-      if((recipe[0] === fixedFam && recipe[1] === partnerFam) || (recipe[0] === partnerFam && recipe[1] === fixedFam)){
-        var fixedHeavy = isHeavy(fixed), partnerHeavy = isHeavy(partner);
-        if(recipe[0] === fixedFam && recipe[1] === partnerFam){
-          if(fixedHeavy || !partnerHeavy) return { base: fixed, top: partner, baseId: fixedId, topId: partnerId, reason: recipe[2], locked: fixedId };
-        } else {
-          if(partnerHeavy || !fixedHeavy) return { base: partner, top: fixed, baseId: partnerId, topId: fixedId, reason: recipe[2], locked: fixedId };
-        }
-        return { base: partner, top: fixed, baseId: partnerId, topId: fixedId, reason: recipe[2], locked: fixedId };
-      }
-    }
-  }
-  var partnerId = ids[Math.floor(Math.random()*ids.length)];
-  if(partnerId === fixedId) partnerId = ids[(ids.indexOf(fixedId)+1) % ids.length];
-  var partner = DB.fragrances[partnerId];
-  var fixedHeavy = isHeavy(fixed);
-  if(fixedHeavy) return { base: fixed, top: partner, baseId: fixedId, topId: partnerId, reason: 'These two find a way to work together. Try the heavier one as a base.', locked: fixedId };
-  return { base: partner, top: fixed, baseId: partnerId, topId: fixedId, reason: 'Unexpected but interesting. The lighter one sits on top of the heavier base.', locked: fixedId };
-}
+// --- LAYERING (replaced by v2 engine above) ---
+// All layering functions defined inline above this section
 
 // --- RENDER ---
 function renderLayer(){
-  document.getElementById('cntM').textContent = '🎲';
   document.getElementById('mobilePicks').innerHTML = '';
   var combo = generateLayerCombo();
+  renderLayerCombo(combo);
+}
+
+function renderLayerCombo(combo){
   var div = document.getElementById('layerCombo');
   div.style.display = 'block';
+  var badge = '';
+  if(combo.score <= -5) badge = '<span style="background:#065f46;color:#6ee7b7;padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:600">🔥 Excellent Match</span>';
+  else if(combo.score <= 0) badge = '<span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:600">✅ Good Match</span>';
+  else if(combo.score <= 5) badge = '<span style="background:#422006;color:#fde68a;padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:600">⚠️ Experimental</span>';
+  else badge = '<span style="background:#3b0f0f;color:#fca5a5;padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:600">🫗 Bold Pairing</span>';
   div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:12px;margin-bottom:10px">' +
-    '<div style="font-size:.85rem;font-weight:700;color:#6366f1;margin-bottom:6px">🎲 Shuffle Layering Combo</div>' +
-    '<div style="margin-bottom:6px"><span style="color:#888;font-size:.7rem">BASE LAYER</span><br><span style="color:#fff;font-weight:600">' + combo.base.name + '</span> <span style="color:#818cf8;font-size:.78rem">' + combo.base.brand + '</span></div>' +
-    '<div style="margin-bottom:8px"><span style="color:#888;font-size:.7rem">TOP LAYER</span><br><span style="color:#fff;font-weight:600">' + combo.top.name + '</span> <span style="color:#818cf8;font-size:.78rem">' + combo.top.brand + '</span></div>' +
-    '<div style="background:#1e1b4b;color:#c7d2fe;padding:8px 10px;border-radius:8px;font-size:.8rem;margin-bottom:6px">💡 ' + combo.reason + '</div>' +
-    '<div style="margin-top:6px">' +
-      '<button onclick="renderLayer()" style="flex:1;padding:8px;background:#6366f1;border:none;color:#fff;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">🔀 Shuffle Again</button>' +
-    '</div></div>';
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+      '<div style="font-size:.85rem;font-weight:700;color:#6366f1">🎲 Layering Combo</div>' + badge +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+      '<div style="flex:1;background:#111;border:1px solid #333;border-radius:8px;padding:8px;text-align:center">' +
+        '<span style="color:#888;font-size:.6rem;text-transform:uppercase;letter-spacing:.5px">BASE</span>' +
+        '<div style="color:#fff;font-weight:600;font-size:.85rem">' + combo.base.name + '</div>' +
+        '<div style="color:#818cf8;font-size:.75rem">' + combo.base.brand + '</div>' +
+        '<div style="color:#555;font-size:.65rem;margin-top:2px">⚡' + (combo.base.longevity||'') + ' · ' + (combo.base.sillage||'') + '</div>' +
+      '</div>' +
+      '<div style="flex:1;background:#111;border:1px solid #333;border-radius:8px;padding:8px;text-align:center">' +
+        '<span style="color:#888;font-size:.6rem;text-transform:uppercase;letter-spacing:.5px">TOP</span>' +
+        '<div style="color:#fff;font-weight:600;font-size:.85rem">' + combo.top.name + '</div>' +
+        '<div style="color:#818cf8;font-size:.75rem">' + combo.top.brand + '</div>' +
+        '<div style="color:#555;font-size:.65rem;margin-top:2px">⚡' + (combo.top.longevity||'') + ' · ' + (combo.top.sillage||'') + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="background:#1e1b4b;color:#c7d2fe;padding:10px;border-radius:8px;font-size:.78rem;margin-bottom:6px;line-height:1.5">💡 ' + combo.reason + '</div>' +
+    '<div style="display:flex;gap:2px;font-size:.65rem;color:#555;margin-bottom:6px;justify-content:center">' +
+      '<span>🏷️ ' + (combo.famA||'?') + '</span><span style="color:#333"> + </span><span>🏷️ ' + (combo.famB||'?') + '</span>' +
+      (combo.notes ? '<span style="color:#333"> · </span><span>🔗 ' + combo.notes.shared + ' shared · ' + combo.notes.complementary + ' complementary</span>' : '') +
+    '</div>' +
+    '<button onclick="renderLayer()" style="width:100%;padding:10px;background:#6366f1;border:none;color:#fff;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer">🔀 Shuffle Another Combo</button>' +
+  '</div>';
 }
 
 function showLayerFit(fragId){
@@ -4177,7 +4476,7 @@ function renderMobile(){
     var bn = (g.baseNotes||[]).join(' · ');
     r += '<div class="mcard">'+
       '<div class="mcard-top"><span class="mcard-name">'+(g.name||'')+'</span><span class="mcard-brand">'+(g.brand||'')+'</span></div>'+
-      '<div class="mcard-meta"><span class="tbadge '+tc(g.type)+'">'+(g.type||'')+'</span> <span style="font-size:.7rem;color:#888">'+(g.longevity||'')+' '+(g.sillage||'')+'</span> <span style="font-size:.65rem;color:#6366f1">#'+getCategory(g)+'</span></div>'+
+      '<div class="mcard-meta"><span class="tbadge '+tc(g.type)+'">'+(g.type||'')+'</span> <span style="font-size:.7rem;color:#888">'+(g.longevity||'')+' '+(g.sillage||'')+'</span> <span style="font-size:.65rem;color:#6366f1">#'+classifyFamily(g)+'</span></div>
       '<div class="mcard-notes">'+
       '<div class="mcard-note-line"><span class="nl">Top</span> '+tn+'</div>'+
       '<div class="mcard-note-line"><span class="nl">Heart</span> '+hn+'</div>'+
